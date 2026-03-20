@@ -98,8 +98,8 @@ version-set: ## Update version in build.gradle.kts from VERSION file
 	@echo "Setting version to $(VERSION)..."
 	@sed -i 's/versionName = ".*"/versionName = "$(VERSION)"/' app/build.gradle.kts
 	@VCODE=$$(echo "$(VERSION)" | awk -F. '{printf "%d", $$1*10000+$$2*100+$$3}'); \
-		sed -i "s/versionCode = .*/versionCode = $$VCODE/" app/build.gradle.kts
-	@echo "Updated build.gradle.kts: versionName=$(VERSION), versionCode=$$VCODE"
+		sed -i "s/versionCode = .*/versionCode = $$VCODE/" app/build.gradle.kts; \
+		echo "Updated build.gradle.kts: versionName=$(VERSION), versionCode=$$VCODE"
 
 release-commit: version-set ## Commit version change and create tag
 	git add -A
@@ -107,7 +107,9 @@ release-commit: version-set ## Commit version change and create tag
 	git tag -f "v$(VERSION)"
 	@echo "Created tag v$(VERSION)"
 
+BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
+
 release-push: release-commit ## Commit, tag and force-push for release
-	git push origin master
+	git push origin $(BRANCH)
 	git push origin "v$(VERSION)" -f
 	@echo "Pushed v$(VERSION) — GitHub Actions will build the release"
