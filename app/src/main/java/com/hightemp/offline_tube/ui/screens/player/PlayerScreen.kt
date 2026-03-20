@@ -1,6 +1,8 @@
 package com.hightemp.offline_tube.ui.screens.player
 
+import android.app.Activity
 import android.net.Uri
+import android.view.WindowManager
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
@@ -45,6 +48,15 @@ fun PlayerScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // Keep screen on while player screen is visible
+    DisposableEffect(Unit) {
+        val window = (context as? Activity)?.window
+        window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        onDispose {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -101,6 +113,7 @@ fun PlayerScreen(
                     if (filePath != null) {
                         val exoPlayer = remember(filePath) {
                             ExoPlayer.Builder(context).build().apply {
+                                setWakeMode(C.WAKE_MODE_LOCAL)
                                 val mediaItem = MediaItem.fromUri(Uri.parse(filePath))
                                 setMediaItem(mediaItem)
                                 seekTo(uiState.initialPositionMs)
