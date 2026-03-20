@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="icons/icon_1.png" width="128" height="128" alt="Offline Tube"/>
+  <img src="icons/icon_2.jpeg" width="128" height="128" alt="Offline Tube"/>
 </p>
 
 <h1 align="center">Offline Tube</h1>
