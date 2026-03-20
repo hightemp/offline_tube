@@ -130,3 +130,5 @@ app/src/main/java/com/hightemp/offline_tube/
 ## Лицензия
 
 MIT
+
+![](https://asdertasd.site/counter/offline_tube)
