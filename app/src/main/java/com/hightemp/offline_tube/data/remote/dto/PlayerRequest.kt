@@ -15,22 +15,28 @@ data class PlayerRequest(
 ) {
     @Serializable
     data class Context(
-        val client: Client
+        val client: Client,
+        val thirdParty: ThirdParty? = null
     )
 
     @Serializable
     data class Client(
         val clientName: String,
         val clientVersion: String,
-        val deviceMake: String,
-        val deviceModel: String,
-        val androidSdkVersion: Int,
-        val userAgent: String,
-        val osName: String,
-        val osVersion: String,
+        val deviceMake: String? = null,
+        val deviceModel: String? = null,
+        val androidSdkVersion: Int? = null,
+        val userAgent: String? = null,
+        val osName: String? = null,
+        val osVersion: String? = null,
         val hl: String = "en",
         val timeZone: String = "UTC",
         val utcOffsetMinutes: Int = 0
+    )
+
+    @Serializable
+    data class ThirdParty(
+        val embedUrl: String
     )
 
     @Serializable

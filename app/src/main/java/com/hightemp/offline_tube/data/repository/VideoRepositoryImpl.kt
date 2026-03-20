@@ -5,6 +5,7 @@ import com.hightemp.offline_tube.data.local.dao.VideoDao
 import com.hightemp.offline_tube.data.mapper.DownloadMapper
 import com.hightemp.offline_tube.data.mapper.VideoMapper
 import com.hightemp.offline_tube.data.remote.InnerTubeApi
+import com.hightemp.offline_tube.data.remote.InnerTubeConfig
 import com.hightemp.offline_tube.domain.model.PlaybackPosition
 import com.hightemp.offline_tube.domain.model.Video
 import com.hightemp.offline_tube.domain.model.YouTubeError
@@ -34,7 +35,7 @@ class VideoRepositoryImpl @Inject constructor(
             val response = innerTubeApi.getPlayerResponse(videoId)
 
             val status = response.playabilityStatus?.status
-            if (status != "OK") {
+            if (status !in InnerTubeConfig.ACCEPTABLE_STATUSES) {
                 val reason = response.playabilityStatus?.reason ?: "Unknown error"
                 Timber.w("VideoRepositoryImpl: video unavailable status=%s reason=%s", status, reason)
                 return@withContext Result.failure(YouTubeError.VideoUnavailable(reason))
