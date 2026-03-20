@@ -1,5 +1,6 @@
 package com.hightemp.offline_tube.domain.usecase
 
+import com.hightemp.offline_tube.domain.model.DownloadStatus
 import com.hightemp.offline_tube.domain.model.Video
 import com.hightemp.offline_tube.domain.model.VideoFormat
 import com.hightemp.offline_tube.domain.model.VideoQuality
@@ -34,6 +35,21 @@ class DownloadVideoUseCase @Inject constructor(
         val existingDownload = downloadRepository.getDownloadByVideoId(video.videoId)
         if (existingDownload != null) {
             Timber.d("DownloadVideoUseCase: video already in queue, id=%d status=%s", existingDownload.id, existingDownload.status)
+            // If the existing download is stuck (DOWNLOADING from a crash) or FAILED/CANCELLED, reset to PENDING
+            when (existingDownload.status) {
+                DownloadStatus.DOWNLOADING, DownloadStatus.FAILED, DownloadStatus.CANCELLED -> {
+                    Timber.d("DownloadVideoUseCase: resetting stuck/failed download id=%d from %s to PENDING", existingDownload.id, existingDownload.status)
+                    downloadRepository.updateStatus(existingDownload.id, DownloadStatus.PENDING, null)
+                    // Also update the download URL with the fresh one
+                    downloadRepository.updateDownloadUrl(existingDownload.id, format.url)
+                }
+                DownloadStatus.COMPLETED -> {
+                    Timber.d("DownloadVideoUseCase: download already completed, id=%d", existingDownload.id)
+                }
+                else -> {
+                    Timber.d("DownloadVideoUseCase: download in state %s, keeping as-is", existingDownload.status)
+                }
+            }
             return Result.success(existingDownload.id)
         }
 

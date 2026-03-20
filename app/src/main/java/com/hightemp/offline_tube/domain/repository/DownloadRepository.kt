@@ -76,4 +76,15 @@ interface DownloadRepository {
      * Get next pending download task.
      */
     suspend fun getNextPendingDownload(): DownloadTask?
+
+    /**
+     * Update the download URL for a task (e.g. when retrying with fresh URL).
+     */
+    suspend fun updateDownloadUrl(id: Long, downloadUrl: String)
+
+    /**
+     * Reset downloads stuck in DOWNLOADING state back to PENDING.
+     * This handles recovery from worker crashes.
+     */
+    suspend fun resetStuckDownloads()
 }

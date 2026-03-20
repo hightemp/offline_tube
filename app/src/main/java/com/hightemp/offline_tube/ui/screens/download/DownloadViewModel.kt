@@ -99,8 +99,17 @@ class DownloadViewModel @Inject constructor(
     fun startDownload(video: Video? = null) {
         val videoToDownload = video ?: _uiState.value.videoInfo
         if (videoToDownload == null) {
+            Timber.w("DownloadViewModel: startDownload called but no video info available")
             _uiState.value = _uiState.value.copy(errorMessage = "Сначала получите информацию о видео")
             return
+        }
+
+        Timber.d("DownloadViewModel: startDownload videoId=%s title=%s formats=%d",
+            videoToDownload.videoId, videoToDownload.title, videoToDownload.formats.size)
+        videoToDownload.formats.forEachIndexed { i, fmt ->
+            Timber.d("DownloadViewModel: format[%d] itag=%d %s %dx%d hasAudio=%b hasVideo=%b url=%s",
+                i, fmt.itag, fmt.mimeType, fmt.width ?: 0, fmt.height ?: 0,
+                fmt.hasAudio, fmt.hasVideo, fmt.url.take(80))
         }
 
         viewModelScope.launch {
@@ -161,6 +170,7 @@ class DownloadViewModel @Inject constructor(
     }
 
     private fun enqueueDownloadWork() {
+        Timber.d("DownloadViewModel: enqueueDownloadWork called")
         val constraints = Constraints.Builder()
             .setRequiredNetworkType(NetworkType.CONNECTED)
             .build()
@@ -171,9 +181,9 @@ class DownloadViewModel @Inject constructor(
 
         workManager.enqueueUniqueWork(
             DownloadWorker.WORK_NAME,
-            ExistingWorkPolicy.KEEP,
+            ExistingWorkPolicy.REPLACE,
             request
         )
-        Timber.d("DownloadViewModel: enqueued download work")
+        Timber.d("DownloadViewModel: enqueued download work with REPLACE policy")
     }
 }

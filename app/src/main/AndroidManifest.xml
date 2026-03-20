@@ -40,6 +40,12 @@
             </intent-filter>
         </activity>
 
+        <!-- WorkManager foreground service for downloads (Android 14+ requires foregroundServiceType) -->
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
+
         <!-- WorkManager initialization provider is auto-added by Hilt -->
         <provider
             android:name="androidx.startup.InitializationProvider"

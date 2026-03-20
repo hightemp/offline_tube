@@ -38,4 +38,10 @@ interface DownloadDao {
 
     @Query("SELECT * FROM downloads WHERE status = 'PENDING' ORDER BY createdAt ASC LIMIT 1")
     suspend fun getNextPending(): DownloadEntity?
+
+    @Query("UPDATE downloads SET downloadUrl = :downloadUrl WHERE id = :id")
+    suspend fun updateDownloadUrl(id: Long, downloadUrl: String)
+
+    @Query("UPDATE downloads SET status = 'PENDING', errorMessage = NULL WHERE status = 'DOWNLOADING'")
+    suspend fun resetStuckDownloads()
 }

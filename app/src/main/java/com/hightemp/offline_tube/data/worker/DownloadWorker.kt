@@ -3,6 +3,7 @@ package com.hightemp.offline_tube.data.worker
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.hilt.work.HiltWorker
@@ -46,6 +47,10 @@ class DownloadWorker @AssistedInject constructor(
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
         Timber.d("DownloadWorker: doWork started")
 
+        // Reset any tasks stuck in DOWNLOADING state (from a previous crash)
+        downloadRepository.resetStuckDownloads()
+
+        var currentTaskId: Long? = null
         try {
             createNotificationChannel()
 
@@ -55,7 +60,10 @@ class DownloadWorker @AssistedInject constructor(
                 return@withContext Result.success()
             }
 
-            Timber.d("DownloadWorker: processing download id=%d videoId=%s", task.id, task.videoId)
+            currentTaskId = task.id
+            Timber.d("DownloadWorker: processing download id=%d videoId=%s title=%s", task.id, task.videoId, task.title)
+            Timber.d("DownloadWorker: downloadUrl=%s", task.downloadUrl?.take(100))
+            Timber.d("DownloadWorker: quality=%s totalBytes=%d status=%s", task.selectedQuality, task.totalBytes, task.status)
 
             val downloadUrl = task.downloadUrl
             if (downloadUrl.isNullOrBlank()) {
@@ -88,7 +96,9 @@ class DownloadWorker @AssistedInject constructor(
                 .header("User-Agent", "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12.1; en_US; Quest 3; Build/SQ3A.220605.009.A1; Cronet/97.0.4692.56)")
                 .build()
 
+            Timber.d("DownloadWorker: starting HTTP request for task id=%d", task.id)
             val response = okHttpClient.newCall(request).execute()
+            Timber.d("DownloadWorker: HTTP response code=%d contentLength=%d for task id=%d", response.code, response.body?.contentLength() ?: -1, task.id)
             if (!response.isSuccessful) {
                 Timber.e("DownloadWorker: HTTP error %d for task id=%d", response.code, task.id)
                 downloadRepository.updateStatus(task.id, DownloadStatus.FAILED, "HTTP error ${response.code}")
@@ -161,14 +171,23 @@ class DownloadWorker @AssistedInject constructor(
 
             Result.success()
         } catch (e: Exception) {
-            Timber.e(e, "DownloadWorker: error during download")
-            val task = downloadRepository.getNextPendingDownload()
-            // The task was already marked DOWNLOADING, so find it
+            Timber.e(e, "DownloadWorker: error during download: %s", e.message)
+            Timber.e("DownloadWorker: exception class=%s", e.javaClass.simpleName)
+            // Mark the current task as failed using saved task ID
+            try {
+                if (currentTaskId != null) {
+                    Timber.d("DownloadWorker: marking task id=%d as FAILED", currentTaskId)
+                    downloadRepository.updateStatus(currentTaskId, DownloadStatus.FAILED, e.message ?: "Unknown error")
+                }
+            } catch (inner: Exception) {
+                Timber.e(inner, "DownloadWorker: failed to update task status")
+            }
             Result.retry()
         }
     }
 
     private fun createForegroundInfo(title: String, progress: Int): ForegroundInfo {
+        Timber.d("DownloadWorker: createForegroundInfo title=%s progress=%d", title, progress)
         val notification = NotificationCompat.Builder(applicationContext, CHANNEL_ID)
             .setContentTitle("Загрузка видео")
             .setContentText(title)
@@ -178,7 +197,11 @@ class DownloadWorker @AssistedInject constructor(
             .setSilent(true)
             .build()
 
-        return ForegroundInfo(NOTIFICATION_ID, notification)
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            ForegroundInfo(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+        } else {
+            ForegroundInfo(NOTIFICATION_ID, notification)
+        }
     }
 
     private fun createNotificationChannel() {

@@ -96,4 +96,14 @@ class DownloadRepositoryImpl @Inject constructor(
     override suspend fun getNextPendingDownload(): DownloadTask? = withContext(Dispatchers.IO) {
         downloadDao.getNextPending()?.let { downloadMapper.fromEntity(it) }
     }
+
+    override suspend fun updateDownloadUrl(id: Long, downloadUrl: String) = withContext(Dispatchers.IO) {
+        Timber.d("DownloadRepositoryImpl: updateDownloadUrl id=%d url=%s", id, downloadUrl.take(80))
+        downloadDao.updateDownloadUrl(id, downloadUrl)
+    }
+
+    override suspend fun resetStuckDownloads() = withContext(Dispatchers.IO) {
+        Timber.d("DownloadRepositoryImpl: resetStuckDownloads")
+        downloadDao.resetStuckDownloads()
+    }
 }
