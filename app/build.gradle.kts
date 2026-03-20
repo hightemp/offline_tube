@@ -7,6 +7,14 @@ plugins {
     alias(libs.plugins.ksp)
 }
 
+val appVersion: String = rootProject.file("VERSION").readText().trim()
+val appVersionCode: Int = appVersion.split(".").let { parts ->
+    val major = parts.getOrElse(0) { "0" }.toIntOrNull() ?: 0
+    val minor = parts.getOrElse(1) { "0" }.toIntOrNull() ?: 0
+    val patch = parts.getOrElse(2) { "0" }.toIntOrNull() ?: 0
+    major * 10000 + minor * 100 + patch
+}
+
 android {
     namespace = "com.hightemp.offline_tube"
     compileSdk = 34
@@ -15,8 +23,8 @@ android {
         applicationId = "com.hightemp.offline_tube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = appVersionCode
+        versionName = appVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }

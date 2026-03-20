@@ -1,10 +1,12 @@
-.PHONY: build debug release clean install run uninstall lint test apk-size devices help
+.PHONY: build debug release clean install run uninstall lint test apk-size devices help \
+       release-commit release-push release-tag version-bump
 
 # Package name
 PACKAGE := com.hightemp.offline_tube
 MAIN_ACTIVITY := $(PACKAGE).MainActivity
 APK_DEBUG := app/build/outputs/apk/debug/app-debug.apk
 APK_RELEASE := app/build/outputs/apk/release/app-release-unsigned.apk
+VERSION := $(shell cat VERSION 2>/dev/null | tr -d '[:space:]')
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
@@ -86,3 +88,26 @@ deps: ## Show dependency tree
 
 sync: ## Sync Gradle project
 	./gradlew prepareKotlinBuildScriptModel
+
+# ─── Release ─────────────────────────────────────────────────────────
+
+version: ## Show current version
+	@echo "v$(VERSION)"
+
+version-set: ## Update version in build.gradle.kts from VERSION file
+	@echo "Setting version to $(VERSION)..."
+	@sed -i 's/versionName = ".*"/versionName = "$(VERSION)"/' app/build.gradle.kts
+	@VCODE=$$(echo "$(VERSION)" | awk -F. '{printf "%d", $$1*10000+$$2*100+$$3}'); \
+		sed -i "s/versionCode = .*/versionCode = $$VCODE/" app/build.gradle.kts
+	@echo "Updated build.gradle.kts: versionName=$(VERSION), versionCode=$$VCODE"
+
+release-commit: version-set ## Commit version change and create tag
+	git add -A
+	git commit -m "release: v$(VERSION)" || true
+	git tag -f "v$(VERSION)"
+	@echo "Created tag v$(VERSION)"
+
+release-push: release-commit ## Commit, tag and force-push for release
+	git push origin master
+	git push origin "v$(VERSION)" -f
+	@echo "Pushed v$(VERSION) — GitHub Actions will build the release"
