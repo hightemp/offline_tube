@@ -109,7 +109,7 @@ release-commit: version-set ## Commit version change and create tag
 
 BRANCH := $(shell git rev-parse --abbrev-ref HEAD)
 
-release-push: release-commit ## Commit, tag and force-push for release
+release: release-commit ## Commit, tag and force-push for release
 	git push origin $(BRANCH)
 	git push origin "v$(VERSION)" -f
 	@echo "Pushed v$(VERSION) — GitHub Actions will build the release"
