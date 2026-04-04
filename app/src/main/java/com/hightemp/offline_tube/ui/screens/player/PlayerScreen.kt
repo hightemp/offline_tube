@@ -1,6 +1,7 @@
 package com.hightemp.offline_tube.ui.screens.player
 
 import android.app.Activity
+import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.view.WindowManager
 import androidx.compose.foundation.background
@@ -47,7 +48,23 @@ fun PlayerScreen(
     viewModel: PlayerViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val autoRotatePlayer by viewModel.autoRotatePlayer.collectAsState()
     val context = LocalContext.current
+
+    // Control orientation based on setting
+    DisposableEffect(autoRotatePlayer) {
+        val activity = context as? Activity
+        if (activity != null) {
+            activity.requestedOrientation = if (autoRotatePlayer) {
+                ActivityInfo.SCREEN_ORIENTATION_SENSOR
+            } else {
+                ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+            }
+        }
+        onDispose {
+            activity?.requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
+        }
+    }
 
     // Keep screen on while player screen is visible
     DisposableEffect(Unit) {

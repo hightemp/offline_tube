@@ -35,4 +35,11 @@ interface SettingsRepository {
     fun observeMaxConcurrentDownloads(): Flow<Int>
     suspend fun getMaxConcurrentDownloads(): Int
     suspend fun setMaxConcurrentDownloads(count: Int)
+
+    /**
+     * Auto-rotate player when orientation changes.
+     */
+    fun observeAutoRotatePlayer(): Flow<Boolean>
+    suspend fun getAutoRotatePlayer(): Boolean
+    suspend fun setAutoRotatePlayer(enabled: Boolean)
 }

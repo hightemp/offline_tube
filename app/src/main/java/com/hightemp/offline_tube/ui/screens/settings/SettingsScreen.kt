@@ -31,6 +31,7 @@ fun SettingsScreen(
     val wifiOnly by viewModel.wifiOnly.collectAsState()
     val downloadPath by viewModel.downloadPath.collectAsState()
     val maxConcurrent by viewModel.maxConcurrentDownloads.collectAsState()
+    val autoRotatePlayer by viewModel.autoRotatePlayer.collectAsState()
 
     Column(
         modifier = Modifier
@@ -83,6 +84,40 @@ fun SettingsScreen(
                     Switch(
                         checked = wifiOnly,
                         onCheckedChange = viewModel::setWifiOnly
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Player settings
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.padding(16.dp)) {
+                Text(
+                    text = "Плеер",
+                    style = MaterialTheme.typography.titleSmall,
+                    modifier = Modifier.padding(bottom = 8.dp)
+                )
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Авто-поворот",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                        Text(
+                            text = "Разрешить смену ориентации экрана в плеере",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Switch(
+                        checked = autoRotatePlayer,
+                        onCheckedChange = viewModel::setAutoRotatePlayer
                     )
                 }
             }

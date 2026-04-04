@@ -33,6 +33,10 @@ class SettingsViewModel @Inject constructor(
         .observeMaxConcurrentDownloads()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 1)
 
+    val autoRotatePlayer: StateFlow<Boolean> = settingsRepository
+        .observeAutoRotatePlayer()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     fun setVideoQuality(quality: VideoQuality) {
         viewModelScope.launch {
             Timber.d("SettingsViewModel: setVideoQuality %s", quality.label)
@@ -49,6 +53,12 @@ class SettingsViewModel @Inject constructor(
     fun setMaxConcurrentDownloads(count: Int) {
         viewModelScope.launch {
             settingsRepository.setMaxConcurrentDownloads(count)
+        }
+    }
+
+    fun setAutoRotatePlayer(enabled: Boolean) {
+        viewModelScope.launch {
+            settingsRepository.setAutoRotatePlayer(enabled)
         }
     }
 }

@@ -4,12 +4,15 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.hightemp.offline_tube.domain.model.Video
+import com.hightemp.offline_tube.domain.repository.SettingsRepository
 import com.hightemp.offline_tube.domain.repository.VideoRepository
 import com.hightemp.offline_tube.domain.usecase.SavePlaybackPositionUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import timber.log.Timber
 import javax.inject.Inject
@@ -26,13 +29,18 @@ data class PlayerUiState(
 class PlayerViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     private val videoRepository: VideoRepository,
-    private val savePlaybackPositionUseCase: SavePlaybackPositionUseCase
+    private val savePlaybackPositionUseCase: SavePlaybackPositionUseCase,
+    settingsRepository: SettingsRepository
 ) : ViewModel() {
 
     private val videoId: String = savedStateHandle.get<String>("videoId") ?: ""
 
     private val _uiState = MutableStateFlow(PlayerUiState())
     val uiState: StateFlow<PlayerUiState> = _uiState.asStateFlow()
+
+    val autoRotatePlayer: StateFlow<Boolean> = settingsRepository
+        .observeAutoRotatePlayer()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
     init {
         loadVideo()
@@ -73,6 +81,8 @@ class PlayerViewModel @Inject constructor(
 
     fun savePosition(positionMs: Long, durationMs: Long) {
         if (videoId.isBlank() || positionMs < 0) return
+
+        _uiState.value = _uiState.value.copy(initialPositionMs = positionMs)
 
         viewModelScope.launch {
             try {

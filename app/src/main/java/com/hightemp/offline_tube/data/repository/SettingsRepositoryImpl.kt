@@ -32,9 +32,11 @@ class SettingsRepositoryImpl @Inject constructor(
         private val KEY_WIFI_ONLY = booleanPreferencesKey("wifi_only")
         private val KEY_DOWNLOAD_PATH = stringPreferencesKey("download_path")
         private val KEY_MAX_CONCURRENT = intPreferencesKey("max_concurrent_downloads")
+        private val KEY_AUTO_ROTATE_PLAYER = booleanPreferencesKey("auto_rotate_player")
 
         private const val DEFAULT_MAX_CONCURRENT = 1
         private const val DEFAULT_WIFI_ONLY = false
+        private const val DEFAULT_AUTO_ROTATE_PLAYER = true
     }
 
     private fun defaultDownloadPath(): String {
@@ -117,6 +119,24 @@ class SettingsRepositoryImpl @Inject constructor(
         Timber.d("SettingsRepositoryImpl: setMaxConcurrentDownloads %d", count)
         dataStore.edit { prefs ->
             prefs[KEY_MAX_CONCURRENT] = count
+        }
+        Unit
+    }
+
+    override fun observeAutoRotatePlayer(): Flow<Boolean> {
+        return dataStore.data.map { prefs ->
+            prefs[KEY_AUTO_ROTATE_PLAYER] ?: DEFAULT_AUTO_ROTATE_PLAYER
+        }
+    }
+
+    override suspend fun getAutoRotatePlayer(): Boolean = withContext(Dispatchers.IO) {
+        dataStore.data.first()[KEY_AUTO_ROTATE_PLAYER] ?: DEFAULT_AUTO_ROTATE_PLAYER
+    }
+
+    override suspend fun setAutoRotatePlayer(enabled: Boolean) = withContext(Dispatchers.IO) {
+        Timber.d("SettingsRepositoryImpl: setAutoRotatePlayer %s", enabled)
+        dataStore.edit { prefs ->
+            prefs[KEY_AUTO_ROTATE_PLAYER] = enabled
         }
         Unit
     }
