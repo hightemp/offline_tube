@@ -46,13 +46,13 @@ object InnerTubeConfig {
         userAgent = "Mozilla/5.0 (ChromiumStylePlatform) Cobalt/25.lts.30.1034943-gold (unlike Gecko), Unknown_TV_Unknown_0/Unknown (Unknown, Unknown)"
     )
 
-    /** Embedded web player — needs thirdParty.embedUrl in context. */
+    /** Embedded web player — needs thirdParty.embedUrl set to a non-YouTube URL (per yt-dlp fix 2026.03.13). */
     val WEB_EMBEDDED = ClientProfile(
         clientName = "WEB_EMBEDDED_PLAYER",
         clientVersion = "1.20260115.01.00",
         clientNameId = "56",
         userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-        embedUrlTemplate = "https://www.youtube.com/embed/{VIDEO_ID}?html5=1"
+        embedUrlTemplate = "https://www.reddit.com/"
     )
 
     /** Ordered list of clients to try. First success wins. */

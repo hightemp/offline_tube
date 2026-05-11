@@ -45,9 +45,9 @@ class InnerTubeApi @Inject constructor(
     suspend fun getPlayerResponse(videoId: String): PlayerResponse {
         Timber.d("InnerTubeApi: requesting player data for videoId=%s", videoId)
 
-        // Phase 1: Obtain visitor data (bootstrap session)
-        val visitorData = visitorDataManager.getVisitorData(videoId)
-        Timber.d("InnerTubeApi: visitorData=%s", visitorData?.take(20) ?: "null")
+        // Phase 1: Obtain session bootstrap data (visitorData + signatureTimestamp)
+        val session = visitorDataManager.getSessionData(videoId)
+        Timber.d("InnerTubeApi: visitorData=%s STS=%s", session.visitorData?.take(20) ?: "null", session.signatureTimestamp)
 
         var lastResponse: PlayerResponse? = null
         var lastError: Exception? = null
@@ -55,7 +55,7 @@ class InnerTubeApi @Inject constructor(
         for (client in InnerTubeConfig.FALLBACK_CLIENTS) {
             try {
                 Timber.d("InnerTubeApi: trying client=%s for videoId=%s", client.clientName, videoId)
-                val response = fetchWithClient(videoId, client, visitorData)
+                val response = fetchWithClient(videoId, client, session.visitorData, session.signatureTimestamp)
                 val status = response.playabilityStatus?.status
 
                 if (status in InnerTubeConfig.ACCEPTABLE_STATUSES && response.streamingData != null) {
@@ -68,9 +68,9 @@ class InnerTubeApi @Inject constructor(
                     return response
                 }
 
-                // If LOGIN_REQUIRED, invalidate visitor data for next attempt
+                // If LOGIN_REQUIRED, invalidate session for next attempt
                 if (status == "LOGIN_REQUIRED") {
-                    Timber.w("InnerTubeApi: LOGIN_REQUIRED from client=%s, invalidating visitor data", client.clientName)
+                    Timber.w("InnerTubeApi: LOGIN_REQUIRED from client=%s, invalidating session", client.clientName)
                     visitorDataManager.invalidate()
                 }
 
@@ -98,9 +98,10 @@ class InnerTubeApi @Inject constructor(
     private fun fetchWithClient(
         videoId: String,
         client: InnerTubeConfig.ClientProfile,
-        visitorData: String?
+        visitorData: String?,
+        signatureTimestamp: Int?
     ): PlayerResponse {
-        val requestBody = buildRequestBody(videoId, client)
+        val requestBody = buildRequestBody(videoId, client, signatureTimestamp)
         val requestJson = json.encodeToString(PlayerRequest.serializer(), requestBody)
 
         val requestBuilder = Request.Builder()
@@ -134,7 +135,8 @@ class InnerTubeApi @Inject constructor(
 
     private fun buildRequestBody(
         videoId: String,
-        client: InnerTubeConfig.ClientProfile
+        client: InnerTubeConfig.ClientProfile,
+        signatureTimestamp: Int?
     ): PlayerRequest {
         val thirdParty = client.embedUrlTemplate?.let { template ->
             PlayerRequest.ThirdParty(
@@ -148,6 +150,7 @@ class InnerTubeApi @Inject constructor(
                     clientName = client.clientName,
                     clientVersion = client.clientVersion,
                     deviceMake = client.deviceMake,
+                    // signatureTimestamp is passed in playbackContext, not here
                     deviceModel = client.deviceModel,
                     androidSdkVersion = client.androidSdkVersion,
                     userAgent = client.userAgent,
@@ -156,7 +159,12 @@ class InnerTubeApi @Inject constructor(
                 ),
                 thirdParty = thirdParty
             ),
-            videoId = videoId
+            videoId = videoId,
+            playbackContext = PlayerRequest.PlaybackContext(
+                contentPlaybackContext = PlayerRequest.ContentPlaybackContext(
+                    signatureTimestamp = signatureTimestamp
+                )
+            )
         )
     }
 }

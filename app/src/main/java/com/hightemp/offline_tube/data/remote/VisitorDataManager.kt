@@ -8,24 +8,32 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * Manages YouTube visitor data (session bootstrap).
+ * Holds session bootstrap data extracted from a YouTube page.
+ */
+data class SessionData(
+    val visitorData: String?,
+    val signatureTimestamp: Int?
+)
+
+/**
+ * Manages YouTube session bootstrap data: visitorData and signatureTimestamp (STS).
  *
- * YouTube requires a valid `visitorData` token in the `X-Goog-Visitor-Id` header
- * for InnerTube API calls to succeed without authentication.
+ * YouTube requires a valid `visitorData` token in the `X-Goog-Visitor-Id` header.
  * Without it, requests return `LOGIN_REQUIRED` ("Sign in to confirm you're not a bot").
  *
- * The visitor data is obtained by fetching any YouTube page and extracting
- * the `VISITOR_DATA` field from the embedded `ytcfg.set({...})` JSON.
+ * Since early 2026, YouTube also requires `signatureTimestamp` (STS from ytcfg) in
+ * `playbackContext.contentPlaybackContext.signatureTimestamp`. Without it, the android_vr
+ * and tv clients return LOGIN_REQUIRED even with a valid visitor token.
  *
- * The extracted value is cached in memory and reused across requests.
- * yt-dlp uses the same approach.
+ * Both values are obtained by fetching any YouTube page and extracting from ytcfg.set({...}).
+ * yt-dlp uses the same approach (_extract_visitor_data + STS from ytcfg['STS']).
  */
 @Singleton
 class VisitorDataManager @Inject constructor(
     private val httpClient: OkHttpClient
 ) {
     @Volatile
-    private var cachedVisitorData: String? = null
+    private var cachedSession: SessionData? = null
 
     companion object {
         /** User-Agent mimicking Safari on macOS — used for the initial page fetch only. */
@@ -37,43 +45,52 @@ class VisitorDataManager @Inject constructor(
 
         /** Regex to extract visitorData from responseContext or client context. */
         private val VISITOR_DATA_CONTEXT_REGEX = Regex(""""visitorData"\s*:\s*"([^"]+)"""")
+
+        /** Regex to extract STS (signatureTimestamp) from ytcfg — required in playbackContext. */
+        private val STS_REGEX = Regex(""""STS"\s*:\s*(\d+)""")
     }
 
     /**
-     * Get a valid visitor data token, fetching from YouTube if not cached.
-     * @param videoId Optional video ID to fetch a specific page (improves cache locality).
-     * @return Visitor data string, or null if extraction fails.
+     * Get session bootstrap data (visitorData + signatureTimestamp), fetching from YouTube if not cached.
+     * @param videoId Optional video ID to fetch a specific page.
+     * @return SessionData with visitor data and STS (either may be null if extraction fails).
      */
-    suspend fun getVisitorData(videoId: String? = null): String? {
-        cachedVisitorData?.let { return it }
+    suspend fun getSessionData(videoId: String? = null): SessionData {
+        cachedSession?.let { return it }
 
         return try {
-            fetchVisitorData(videoId).also { data ->
-                if (data != null) {
-                    cachedVisitorData = data
-                    Timber.d("VisitorDataManager: obtained visitor data: %s", data.take(20) + "...")
-                } else {
+            fetchSessionData(videoId).also { session ->
+                cachedSession = session
+                Timber.d(
+                    "VisitorDataManager: visitorData=%s STS=%s",
+                    session.visitorData?.take(20) ?: "null",
+                    session.signatureTimestamp
+                )
+                if (session.visitorData == null) {
                     Timber.w("VisitorDataManager: failed to extract visitor data from page")
+                }
+                if (session.signatureTimestamp == null) {
+                    Timber.w("VisitorDataManager: failed to extract STS from page")
                 }
             }
         } catch (e: Exception) {
-            Timber.e(e, "VisitorDataManager: error fetching visitor data")
-            null
+            Timber.e(e, "VisitorDataManager: error fetching session data")
+            SessionData(null, null)
         }
     }
 
     /**
-     * Clear the cached visitor data (e.g., after a LOGIN_REQUIRED response).
+     * Clear the cached session (e.g., after a LOGIN_REQUIRED response).
      */
     fun invalidate() {
-        cachedVisitorData = null
+        cachedSession = null
         Timber.d("VisitorDataManager: cache invalidated")
     }
 
     /**
-     * Fetch a YouTube page and extract visitor data from ytcfg.
+     * Fetch a YouTube page and extract visitor data and STS from ytcfg.
      */
-    private fun fetchVisitorData(videoId: String?): String? {
+    private fun fetchSessionData(videoId: String?): SessionData {
         val url = if (videoId != null) {
             "https://www.youtube.com/watch?v=$videoId&bpctr=9999999999&has_verified=1"
         } else {
@@ -96,15 +113,19 @@ class VisitorDataManager @Inject constructor(
             throw IOException("Failed to fetch YouTube page: HTTP ${response.code}")
         }
 
-        val body = response.body?.string() ?: return null
+        val body = response.body?.string() ?: return SessionData(null, null)
 
-        // Try VISITOR_DATA from ytcfg first
-        VISITOR_DATA_REGEX.find(body)?.groupValues?.get(1)?.let { return it }
+        // Extract VISITOR_DATA from ytcfg first, fallback to visitorData from embedded JSON
+        val visitorData = VISITOR_DATA_REGEX.find(body)?.groupValues?.get(1)
+            ?: VISITOR_DATA_CONTEXT_REGEX.find(body)?.groupValues?.get(1)
 
-        // Fallback: try visitorData from embedded JSON
-        VISITOR_DATA_CONTEXT_REGEX.find(body)?.groupValues?.get(1)?.let { return it }
+        if (visitorData == null) {
+            Timber.w("VisitorDataManager: no visitor data found in %d byte page", body.length)
+        }
 
-        Timber.w("VisitorDataManager: no visitor data found in %d byte page", body.length)
-        return null
+        // Extract STS (signatureTimestamp) — required in playbackContext since early 2026
+        val sts = STS_REGEX.find(body)?.groupValues?.get(1)?.toIntOrNull()
+
+        return SessionData(visitorData, sts)
     }
 }
