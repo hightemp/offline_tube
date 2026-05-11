@@ -13,6 +13,8 @@
   <img src="https://img.shields.io/badge/Language-Kotlin-purple?logo=kotlin" alt="Kotlin"/>
   <img src="https://img.shields.io/badge/UI-Jetpack%20Compose-blue" alt="Compose"/>
   <img src="https://img.shields.io/badge/MinSDK-24-orange" alt="MinSDK"/>
+  <a href="https://github.com/hightemp/offline_tube/releases/latest"><img src="https://img.shields.io/github/v/release/hightemp/offline_tube?label=Release&color=blue" alt="Latest Release"/></a>
+  <a href="https://github.com/hightemp/offline_tube/releases"><img src="https://img.shields.io/github/downloads/hightemp/offline_tube/total?label=Downloads&color=brightgreen" alt="Total Downloads"/></a>
 </p>
 
 ---
