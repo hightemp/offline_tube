@@ -23,7 +23,7 @@ android {
         applicationId = "com.hightemp.offline_tube"
         minSdk = 24
         targetSdk = 34
-        versionCode = 300
+        versionCode = 301
         versionName = appVersion
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
